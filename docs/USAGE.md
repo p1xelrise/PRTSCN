@@ -5,7 +5,7 @@ Every key, option and tool in detail. For the overview, see the [README](../READ
 ## Run it
 
 1. Copy `PRTSCN.exe` anywhere (for example `%LOCALAPPDATA%\PRTSCN\`) and double-click it. It's self-contained, so there's nothing to install.
-2. It lives in the tray. **Quit Lightshot first**, because only one app can own Print Screen.
+2. It lives in the tray.
 3. On Windows 11, turn off *Settings > Accessibility > Keyboard > "Use the Print screen key to open screen capture"*. PRTSCN warns you if this is on.
 
 Windows SmartScreen will warn that the exe is unsigned ("More info > Run anyway"). Code signing is on the roadmap.
