@@ -71,7 +71,6 @@ internal sealed class DrawLayer : Form
     }
 
     public bool HasStrokes => _strokes.Count > 0;
-
     public bool DrawMode
     {
         get => _drawMode;
@@ -113,6 +112,7 @@ internal sealed class DrawLayer : Form
     public void Undo()
     {
         if (_strokes.Count == 0) return;
+        _current = null;
         _strokes.RemoveAt(_strokes.Count - 1);
         Render();
     }

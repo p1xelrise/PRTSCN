@@ -9,7 +9,7 @@ internal static class UiShots
 
         var area = Screen.PrimaryScreen!.Bounds;
         area = new Rectangle(area.X + 200, area.Y + 300, 800, 450);
-        using var bar = new Recording.RecordControlBar(() => { }, () => { }, () => { }, () => { }, "Ctrl+Alt+PrintScreen", "Pause", () => { }, meters: true, toggleDraw: () => { }, pickInk: (_, _) => { });
+        using var bar = new Recording.RecordControlBar(() => { }, () => { }, () => { }, () => { }, "Ctrl+Alt+PrintScreen", "Pause", () => { }, meters: true, toggleDraw: () => { }, pickInk: (_, _) => { }, undoDraw: () => { }, clearDraw: () => { });
         bar.SetInk(Theme.Ink[4], 9);
         bar.SetDrawing(true);
         bar.PlaceNear(area);

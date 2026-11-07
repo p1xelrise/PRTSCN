@@ -245,3 +245,41 @@ public sealed class FrameResampler
         return slots;
     }
 }
+
+/// <summary>
+/// Decides when each decoded frame starts showing in the output, so that every output slot gets
+/// the nearest frame and no frame is shown twice while the next one is skipped.
+/// A trim or cut rarely falls on a frame boundary, and recorded timestamps jitter by a few ticks,
+/// so frames would land a hair before or after slot boundaries. Each kept part is therefore moved
+/// by under half a frame so its first frame sits on a slot, and frames take over half a frame early.
+/// </summary>
+public sealed class FrameAligner
+{
+    readonly long _frame;
+    long _shift, _last = long.MinValue;
+    bool _aligned;
+
+    public FrameAligner(long frameDuration) => _frame = Math.Max(1, frameDuration);
+
+    /// <summary>A new kept part starts: its frames get their own alignment.</summary>
+    public void NewPart() => _aligned = false;
+
+    /// <summary>
+    /// The time to feed to <see cref="FrameResampler.Feed"/> for a frame at output time t.
+    /// onGrid is false for a frame from before the part (shown at the part's start), which doesn't
+    /// set the alignment. Times never go backwards.
+    /// </summary>
+    public long Place(long t, bool onGrid = true)
+    {
+        if (onGrid && !_aligned)
+        {
+            long slot = (long)Math.Round(t / (double)_frame, MidpointRounding.AwayFromZero);
+            _shift = t - slot * _frame;
+            _aligned = true;
+        }
+        long at = (onGrid ? t - _shift : t) - _frame / 2;
+        if (at < _last) at = _last;
+        _last = at;
+        return at;
+    }
+}

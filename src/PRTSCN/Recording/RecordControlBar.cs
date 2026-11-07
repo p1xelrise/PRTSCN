@@ -23,6 +23,7 @@ internal sealed class RecordControlBar : Form
     }
 
     Item? _draw;
+    Item? _undo, _clear;           // end of the ink row
     readonly List<Item> _ink = new();   // second row while drawing: colours, then pen sizes
     Color _inkColor = Color.Red;
     float _inkWidth = 5;
@@ -63,7 +64,8 @@ internal sealed class RecordControlBar : Form
     bool _dragging, _userMoved;
 
     public RecordControlBar(Action pauseResume, Action restart, Action discard, Action stop, string stopHint, string pauseHint,
-        Action? toggleMic = null, bool meters = false, Action? toggleDraw = null, Action<Color?, float?>? pickInk = null)
+        Action? toggleMic = null, bool meters = false, Action? toggleDraw = null, Action<Color?, float?>? pickInk = null,
+        Action? undoDraw = null, Action? clearDraw = null)
     {
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
@@ -94,6 +96,16 @@ internal sealed class RecordControlBar : Form
                 }
                 foreach (var w in AppSettings.DrawWidthChoices)
                     _ink.Add(new Item { Dot = w, Tip = $"Pen size {w}  ([ ] or the mouse wheel for any size)", Click = () => pickInk(null, w) });
+                if (undoDraw != null)
+                {
+                    _undo = new Item { Icon = IconKind.Undo, Tip = "Undo the last line  (Ctrl+Z or right-click)", Click = undoDraw };
+                    _ink.Add(_undo);
+                }
+                if (clearDraw != null)
+                {
+                    _clear = new Item { Icon = IconKind.Trash, Tip = "Clear the drawing from the screen  (Delete)", Click = clearDraw };
+                    _ink.Add(_clear);
+                }
             }
         }
         _pause = new Item { Icon = IconKind.Pause, Tip = $"Pause  ({pauseHint})", Click = pauseResume };
@@ -185,17 +197,18 @@ internal sealed class RecordControlBar : Form
         int width = x + pad, height = b + pad * 2;
         if (InkRow)
         {
-            // second row: colour swatches, a gap, then pen sizes
+            // second row: colour swatches, a gap, pen sizes, room for a custom width number, then Undo and Clear
             int rh = S(28), y = pad + b + S(2), ix = pad + S(4);
-            bool gap = false;
+            bool gap = false, tools = false;
             foreach (var it in _ink)
             {
-                if (it.Swatch == null && !gap) { ix += S(12); gap = true; }
+                if ((it == _undo || it == _clear) && !tools) { ix += S(28); tools = true; }
+                else if (it.Swatch == null && !gap) { ix += S(12); gap = true; }
                 int w = it.Swatch != null ? S(26) : S(30);
                 it.Bounds = new Rectangle(ix, y, w, rh);
                 ix += w;
             }
-            width = Math.Max(width, ix + S(24) + pad); // room for a custom width number
+            width = Math.Max(width, ix + (tools ? 0 : S(24)) + pad);
             height = y + rh + pad;
         }
         ClientSize = new Size(width, height);
@@ -269,7 +282,14 @@ internal sealed class RecordControlBar : Form
             var r = it.Bounds;
             float cx = r.X + r.Width / 2f, cy = r.Y + r.Height / 2f;
             if (it == _hover) Theme.FillRound(g, Theme.Surface, Rectangle.Inflate(r, -S(1), -S(1)), Theme.RadiusSm * _scale);
-            if (it.Swatch is Color c)
+            if (it == _undo || it == _clear)
+            {
+                if (it == _pressed) Theme.FillRound(g, Theme.SurfaceActive, Rectangle.Inflate(r, -S(1), -S(1)), Theme.RadiusSm * _scale);
+                var col = it != _hover ? Theme.TextMuted : it == _clear ? Theme.Danger : Theme.Text;
+                int sz = S(Theme.SizeIcon);
+                Icons.Draw(g, it.Icon, new RectangleF(cx - sz / 2f, cy - sz / 2f, sz, sz), col, _scale, col);
+            }
+            else if (it.Swatch is Color c)
             {
                 float d = S(16);
                 using (var b = new SolidBrush(c)) g.FillEllipse(b, cx - d / 2, cy - d / 2, d, d);
@@ -296,7 +316,7 @@ internal sealed class RecordControlBar : Form
         {
             using var small = Theme.UiFont(Theme.TypeSm, false, _scale);
             using var tb = new SolidBrush(Theme.TextMuted);
-            var last = _ink[^1].Bounds;
+            var last = _ink.Last(i => i.Dot > 0).Bounds;
             g.DrawString($"{_inkWidth:0}", small, tb, last.Right + S(4), last.Y + S(6));
         }
     }

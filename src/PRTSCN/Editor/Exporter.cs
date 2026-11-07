@@ -131,9 +131,12 @@ internal static class Exporter
                 progress?.Invoke(total > 0 ? Math.Min(1, (double)slotTime / total) : 0);
             }
 
-            void Push(ref byte[] frame, long outTime)
+            // nearest frame per slot, each part lined up with the slots (no repeated-then-skipped frames)
+            var align = new FrameAligner(frameDur);
+
+            void Push(ref byte[] frame, long outTime, bool onGrid = true)
             {
-                foreach (var slot in res.Feed(outTime)) WriteSlot(held, slot);
+                foreach (var slot in res.Feed(align.Place(outTime, onGrid))) WriteSlot(held, slot);
                 (held, frame) = (frame, held);
             }
 
@@ -143,6 +146,7 @@ internal static class Exporter
                 reader = open(path);
                 if (reader.Width != outSize.Width || reader.Height != outSize.Height) throw new InvalidOperationException("The parts have different sizes.");
                 reader.Seek(seg.Start);
+                align.NewPart();
                 bool havePre = false, any = false;
                 long preTime = 0;
                 while (reader.ReadFrame(cur, out long t))
@@ -150,12 +154,12 @@ internal static class Exporter
                     ct.ThrowIfCancellationRequested();
                     if (t < seg.Start) { (pre, cur) = (cur, pre); havePre = true; preTime = t; continue; }
                     if (t >= seg.End) break;
-                    if (!any && havePre && t > seg.Start) { Blur(pre, preTime); Push(ref pre, offset); }
+                    if (!any && havePre && t > seg.Start) { Blur(pre, preTime); Push(ref pre, offset, onGrid: false); }
                     any = true;
                     Blur(cur, t);
                     Push(ref cur, offset + t - seg.Start);
                 }
-                if (!any && havePre) { Blur(pre, preTime); Push(ref pre, offset); }
+                if (!any && havePre) { Blur(pre, preTime); Push(ref pre, offset, onGrid: false); }
                 offset += seg.Length;
             }
             foreach (var slot in res.Flush(total)) WriteSlot(held, slot);

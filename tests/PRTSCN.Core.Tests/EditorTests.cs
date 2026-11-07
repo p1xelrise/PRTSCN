@@ -97,6 +97,70 @@ public class FrameResamplerTests
         filled.AddRange(r.Flush(10_000_000));
         Assert.Equal(new long[] { 0, 2_000_000, 4_000_000, 6_000_000, 8_000_000 }, filled);
     }
+
+    /// <summary>
+    /// Export a 30 fps recording with jittery timestamps, trimmed at an awkward time and with a cut,
+    /// and return which source frame lands in each output slot.
+    /// </summary>
+    static List<int> Export(long trimIn, bool aligned)
+    {
+        const int fps = 30;
+        var r = new FrameResampler(fps);
+        var align = new FrameAligner(r.FrameDuration);
+        var jitter = new long[] { 0, 2, -3, 1, -1, 3, -2 };
+        // two kept parts: trimIn..4 s and 5.0123 s..8 s
+        var parts = new[] { (Start: trimIn, End: 40_000_000L), (Start: 50_123_000L, End: 80_000_000L) };
+        var shown = new List<int>();
+        int held = -1;
+        long offset = 0;
+        void Push(int k, long outTime, bool onGrid)
+        {
+            foreach (var _ in r.Feed(aligned ? align.Place(outTime, onGrid) : outTime)) shown.Add(held);
+            held = k;
+        }
+        foreach (var (start, end) in parts)
+        {
+            align.NewPart();
+            int pre = -1;
+            bool any = false;
+            for (int k = 0; k < 90 * fps; k++)
+            {
+                long t = k * 10_000_000L / fps + jitter[k % jitter.Length];
+                if (t < start) { pre = k; continue; }
+                if (t >= end) break;
+                // like the exporter: the frame showing at the part's start fills in before its first new frame
+                if (!any && pre >= 0 && t > start) Push(pre, offset, onGrid: false);
+                any = true;
+                Push(k, offset + t - start, onGrid: true);
+            }
+            offset += end - start;
+        }
+        foreach (var _ in r.Flush(offset)) shown.Add(held);
+        return shown;
+    }
+
+    static int Repeats(List<int> shown) => Enumerable.Range(1, shown.Count - 1).Count(i => shown[i] == shown[i - 1]);
+
+    [Theory]
+    [InlineData(0L)]            // no trim: frames sit right on the slot edges
+    [InlineData(12_345_678L)]   // trimmed at an odd time
+    [InlineData(10_000_001L)]   // one tick past a frame
+    public void Trimmed_export_keeps_every_frame_once(long trimIn)
+    {
+        var shown = Export(trimIn, aligned: true);
+        // the part was moved under half a frame, so the last frame may also fill the final slot
+        var repeats = Enumerable.Range(1, shown.Count - 1).Where(i => shown[i] == shown[i - 1]).ToList();
+        Assert.All(repeats, i => Assert.Equal(shown.Count - 1, i));
+        // every source frame follows the previous one, except at the cut and a possible last repeat
+        var jumps = Enumerable.Range(1, shown.Count - 1).Where(i => shown[i] != shown[i - 1] + 1 && !repeats.Contains(i)).ToList();
+        Assert.Single(jumps);
+    }
+
+    [Fact]
+    public void Without_alignment_jitter_repeats_and_skips_frames()
+    {
+        Assert.True(Repeats(Export(0, aligned: false)) > 10); // the old behaviour this guards against
+    }
 }
 
 public class GifWriterTests

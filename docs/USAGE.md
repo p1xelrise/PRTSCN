@@ -52,7 +52,7 @@ Needs Windows 10 2004 or later. Videos are H.264 MP4, saved to `Videos\PRTSCN` b
 | tray > **Record sound only** | computer sound and/or microphone to an `.m4a` file |
 | record bar > **MP4 · 30 fps** | pick MP4 at 15 / 30 / 60 fps, or **GIF** (no sound; made from a temporary MP4 when you stop) |
 | tray > **Recent recordings** / **Open a recording…** | open a recording in the editor |
-| control bar > **pen** | draw on the screen while recording; it shows in the video. While drawing, a second row on the bar picks the colour (8) and pen size (4); 1–8 colour, [ ] or the mouse wheel any size (2–40), right-click or Ctrl+Z undo, Delete clears, Esc stops drawing (the strokes stay until cleared). The last colour and size are remembered. In a window recording the strokes are drawn into the video by PRTSCN, since the window capture can't see the drawing layer |
+| control bar > **pen** | draw on the screen while recording; it shows in the video. While drawing, a second row on the bar picks the colour (8) and pen size (4); 1–8 colour, [ ] or the mouse wheel any size (2–40), right-click, Ctrl+Z or the ↶ button undo, Delete or the trash button clears, Esc stops drawing (the strokes stay until cleared; click the pen again to get the buttons back). The last colour and size are remembered. In a window recording the strokes are drawn into the video by PRTSCN, since the window capture can't see the drawing layer |
 | tray > **Instant replay** | keeps recording the screen with the mouse in the background (30 s – 5 min, Options > Recording) |
 | **Ctrl + Alt + R** | save the instant replay to the recordings folder |
 | tray > **Schedule a recording…** | the full screen or sound only, starting at a time of day, for some minutes (PRTSCN must be running) |

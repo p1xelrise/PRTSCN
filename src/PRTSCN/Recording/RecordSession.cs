@@ -120,7 +120,7 @@ internal sealed class RecordSession : IDisposable
         }
         bool canDraw = _target.Kind != RecordKind.Audio;
         _bar = new RecordControlBar(PauseResume, Restart, Discard, Stop, _stopHint, _pauseHint, _rec.Audio?.Mic != null ? ToggleMic : null, _rec.Audio != null,
-            canDraw ? ToggleDraw : null, canDraw ? PickInk : null);
+            canDraw ? ToggleDraw : null, canDraw ? PickInk : null, canDraw ? UndoDraw : null, canDraw ? ClearDraw : null);
         _bar.PlaceNear(area);
         _tick.Interval = _target.Kind == RecordKind.Follow ? 40 : 250; // the frame glides with a follow view
         _tick.Start();
@@ -197,8 +197,7 @@ internal sealed class RecordSession : IDisposable
         {
             var ink = ColorTranslator.FromHtml(_settings.DrawColor);
             _draw = new DrawLayer(ink, _settings.DrawWidth, () => SetDrawing(false));
-            _draw.InkChanged += () => InkChanged(_draw.Ink, _draw.InkWidth);
-            _draw.SetArea(DrawArea());
+            _draw.InkChanged += () => InkChanged(_draw.Ink, _draw.InkWidth);            _draw.SetArea(DrawArea());
             // a window recording sees only that window, not the drawing layer above it: draw the strokes in
             if (_target.Kind == RecordKind.Window && _rec is ScreenRecorder win) { var layer = _draw; win.Strokes = () => layer.Strokes; }
             _bar?.SetInk(_draw.Ink, _draw.InkWidth);
@@ -216,6 +215,15 @@ internal sealed class RecordSession : IDisposable
         InkChanged(_draw.Ink, _draw.InkWidth);
         if (!_draw.DrawMode) SetDrawing(true);
         else { _draw.Activate(); _draw.Focus(); } // keys keep going to the drawing
+    }
+
+    /// <summary>Bar buttons: take back the last line, or wipe the drawing. Drawing goes on if it was on.</summary>
+    void UndoDraw() { _draw?.Undo(); KeepDrawingFocus(); }
+    void ClearDraw() { _draw?.Clear(); KeepDrawingFocus(); }
+
+    void KeepDrawingFocus()
+    {
+        if (_draw?.DrawMode == true) { _draw.Activate(); _draw.Focus(); } // keys keep going to the drawing
     }
 
     void InkChanged(Color color, float width)
