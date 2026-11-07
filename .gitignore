@@ -1,0 +1,8 @@
+bin/
+obj/
+dist/
+*.user
+.vs/
+
+# private research notes (kept on this PC, not published)
+replica/
